@@ -1,0 +1,791 @@
+{
+  "name": "Agente Financeiro Inteligente - Treinamento Prático N8N",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bot-financeiro",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "ipWhitelist": ""
+        }
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Webhook Bot Financeiro",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "bot-financeiro-dio-training"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "norm-1",
+              "name": "usuarioNome",
+              "value": "={{ ($json.body?.usuario || 'Arthur').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-2",
+              "name": "telefoneLimpo",
+              "value": "={{ ($json.body?.telefone || '').toString().replace(/\\D/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-3",
+              "name": "opcaoMenu",
+              "value": "={{ ($json.body?.opcao || '1').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-4",
+              "name": "tipoTransacao",
+              "value": "={{ ($json.body?.tipo || 'DESPESA').toString().toUpperCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-5",
+              "name": "categoria",
+              "value": "={{ $json.body?.categoria || 'Geral' }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-6",
+              "name": "descricao",
+              "value": "={{ $json.body?.descricao || 'Lançamento via Bot' }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-7",
+              "name": "valorNumerico",
+              "value": "={{ ($json.body?.valor || '0').toString().replace(/[^0-9,.-]/g, '').replace(',', '.').toNumber() }}",
+              "type": "number"
+            },
+            {
+              "id": "norm-8",
+              "name": "formaPagamento",
+              "value": "={{ $json.body?.formaPagamento || 'PIX' }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-9",
+              "name": "dataVencimento",
+              "value": "={{ ($json.body?.dataVencimento ? $json.body.dataVencimento.toDateTime() : $now).toFormat('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-10",
+              "name": "mesReferencia",
+              "value": "={{ ($json.body?.dataVencimento ? $json.body.dataVencimento.toDateTime() : $now).toFormat('MM') }}",
+              "type": "string"
+            },
+            {
+              "id": "norm-11",
+              "name": "idTransacao",
+              "value": "={{ 'FIN-' + Math.floor(Math.random() * 1000000).toString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Normalizar e Converter Dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.opcaoMenu }}",
+                    "rightValue": "1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "1_Registrar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.opcaoMenu }}",
+                    "rightValue": "2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "2_Resumo"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Roteador Menu do Chatbot",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-val-1",
+              "leftValue": "={{ $json.valorNumerico }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Filtrar Valor Válido (> 0)",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        980,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "SEU_GOOGLE_SHEET_ID_AQUI",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Lancamentos",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $json.idTransacao }}",
+            "Data_Vencimento": "={{ $json.dataVencimento }}",
+            "Mes": "={{ $json.mesReferencia }}",
+            "Usuario": "={{ $json.usuarioNome }}",
+            "Telefone": "={{ $json.telefoneLimpo }}",
+            "Tipo": "={{ $json.tipoTransacao }}",
+            "Categoria": "={{ $json.categoria }}",
+            "Descricao": "={{ $json.descricao }}",
+            "Valor": "={{ $json.valorNumerico }}",
+            "Forma_Pagamento": "={{ $json.formaPagamento }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Salvar Lançamento (Google Sheets)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1220,
+        180
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"sucesso\",\n  \"mensagem\": \"✅ Transação registrada com sucesso, {{ $('Normalizar e Converter Dados').item.json.usuarioNome }}!\",\n  \"detalhes\": {\n    \"id\": \"{{ $('Normalizar e Converter Dados').item.json.idTransacao }}\",\n    \"tipo\": \"{{ $('Normalizar e Converter Dados').item.json.tipoTransacao }}\",\n    \"categoria\": \"{{ $('Normalizar e Converter Dados').item.json.categoria }}\",\n    \"valorFormatado\": \"R$ {{ $('Normalizar e Converter Dados').item.json.valorNumerico.toFixed(2) }}\",\n    \"vencimento\": \"{{ $('Normalizar e Converter Dados').item.json.dataVencimento }}\",\n    \"mesReferencia\": \"{{ $('Normalizar e Converter Dados').item.json.mesReferencia }}\"\n  }\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Responder Sucesso ao Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1460,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"menu\",\n  \"mensagem\": \"🤖 Olá, {{ $json.usuarioNome }}! Escolha uma opção do Agente Financeiro:\\n1: Financeiro - Registrar Receita/Despesa\\n2: Suporte - Consultar Resumo do Mês ({{ $json.mesReferencia }})\\n3: Falar com um consultor / Ajuda\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1b2c3d4-0007-4000-8000-000000000007",
+      "name": "Responder Menu Interativo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        980,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0008-4000-8000-000000000008",
+      "name": "Agendamento Diário (08:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://sandbox.asaas.com/api/v3/payments",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "PENDING"
+            },
+            {
+              "name": "dueDate[le]",
+              "value": "={{ $now.plus({ days: 3 }).toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0009-4000-8000-000000000009",
+      "name": "Buscar Contas/Cobranças (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        640
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://sandbox.asaas.com/api/v3/customers",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0010-4000-8000-000000000010",
+      "name": "Buscar Clientes/Responsáveis (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        840
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0011-4000-8000-000000000011",
+      "name": "Split Out Cobranças",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        700,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0012-4000-8000-000000000012",
+      "name": "Split Out Clientes",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        700,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "customer",
+              "field2": "id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0013-4000-8000-000000000013",
+      "name": "Merge (Unificar Conta + Cliente)",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        940,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "filter-pay-1",
+              "leftValue": "={{ $json.billingType }}",
+              "rightValue": "CREDIT_CARD",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0014-4000-8000-000000000014",
+      "name": "Filtrar Boleto ou Pix (Não Cartão)",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a1b2c3d4-0015-4000-8000-000000000015",
+      "name": "Loop Over Items (Processar 1 a 1)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1380,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "html-1",
+              "name": "assuntoEmail",
+              "value": "={{ '🔔 Lembrete Financeiro: ' + $json.name + ' - Vencimento em ' + $json.dueDate.toDateTime().toFormat('dd/MM/yyyy') }}",
+              "type": "string"
+            },
+            {
+              "id": "html-2",
+              "name": "corpoHtml",
+              "value": "={{ 'Olá, <strong>' + $json.name + '</strong>!<br><br>Identificamos um lançamento financeiro próximo do vencimento:<br>• <strong>Descrição:</strong> ' + ($json.description || 'Fatura') + '<br>• <strong>Valor:</strong> R$ ' + $json.value.toString() + '<br>• <strong>Vencimento:</strong> ' + $json.dueDate.toDateTime().toFormat('dd/MM/yyyy') + '<br>• <strong>Forma de Pagamento:</strong> ' + $json.billingType + '<br><br>Atenciosamente,<br><strong>Agente Financeiro N8N</strong>' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0016-4000-8000-000000000016",
+      "name": "Montar Template HTML (Edit Fields)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1620,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "financeiro@suaempresa.com.br",
+        "toEmail": "={{ $json.email }}",
+        "subject": "={{ $json.assuntoEmail }}",
+        "html": "={{ $json.corpoHtml }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0017-4000-8000-000000000017",
+      "name": "Send Email (Alerta de Vencimento)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1860,
+        660
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "id": "a1b2c3d4-0018-4000-8000-000000000018",
+      "name": "Wait (Espaçar Envios)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "lancamentosAgregados",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0019-4000-8000-000000000019",
+      "name": "Aggregate (Juntar Itens para Relatório)",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1620,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "rep-1",
+              "name": "relatorioConsolidadoHtml",
+              "value": "={{ '<h2>📊 Relatório Diário de Contas a Vencer</h2><br>' + $json.lancamentosAgregados.map(item => '• <strong>' + item.name + '</strong>: R$ ' + item.value + ' (' + item.billingType + ') - Vence em: ' + item.dueDate).join('<br>') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-0020-4000-8000-000000000020",
+      "name": "Formatar Relatório com .join('<br>')",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1860,
+        880
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Bot Financeiro": {
+      "main": [
+        [
+          {
+            "node": "Normalizar e Converter Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar e Converter Dados": {
+      "main": [
+        [
+          {
+            "node": "Roteador Menu do Chatbot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador Menu do Chatbot": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Valor Válido (> 0)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Menu Interativo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Menu Interativo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Valor Válido (> 0)": {
+      "main": [
+        [
+          {
+            "node": "Salvar Lançamento (Google Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar Lançamento (Google Sheets)": {
+      "main": [
+        [
+          {
+            "node": "Responder Sucesso ao Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agendamento Diário (08:00)": {
+      "main": [
+        [
+          {
+            "node": "Buscar Contas/Cobranças (API)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar Clientes/Responsáveis (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Contas/Cobranças (API)": {
+      "main": [
+        [
+          {
+            "node": "Split Out Cobranças",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Clientes/Responsáveis (API)": {
+      "main": [
+        [
+          {
+            "node": "Split Out Clientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Cobranças": {
+      "main": [
+        [
+          {
+            "node": "Merge (Unificar Conta + Cliente)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Clientes": {
+      "main": [
+        [
+          {
+            "node": "Merge (Unificar Conta + Cliente)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge (Unificar Conta + Cliente)": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Boleto ou Pix (Não Cartão)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Boleto ou Pix (Não Cartão)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items (Processar 1 a 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items (Processar 1 a 1)": {
+      "main": [
+        [
+          {
+            "node": "Aggregate (Juntar Itens para Relatório)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Montar Template HTML (Edit Fields)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Template HTML (Edit Fields)": {
+      "main": [
+        [
+          {
+            "node": "Send Email (Alerta de Vencimento)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email (Alerta de Vencimento)": {
+      "main": [
+        [
+          {
+            "node": "Wait (Espaçar Envios)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Espaçar Envios)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items (Processar 1 a 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate (Juntar Itens para Relatório)": {
+      "main": [
+        [
+          {
+            "node": "Formatar Relatório com .join('<br>')",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook Bot Financeiro": [
+      {
+        "json": {
+          "headers": {
+            "authorization": "Bearer token-secreto-financeiro-2026",
+            "content-type": "application/json"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "usuario": "Arthur Brito",
+            "telefone": "(11) 99876-5432",
+            "opcao": "1",
+            "tipo": "Despesa",
+            "categoria": "Infraestrutura Cloud & IA",
+            "descricao": "Assinatura Servidor N8N + API",
+            "valor": "R$ 149,90",
+            "formaPagamento": "PIX",
+            "dataVencimento": "2026-10-30"
+          }
+        }
+      }
+    ]
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
